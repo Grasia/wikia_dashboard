@@ -117,8 +117,6 @@ def slider_callback(attr,old,new):
 	date_div.text = '<h1 style="text-align:center"> Stats until: '+time[new-1]+'<h1>'
 	top_users_source.data = top_users_table_ds[dates[new-1]].data
 	top_pages_source.data = top_pages_ds[dates[new-1]].data
-	classified_users_source.data = classified_users_ds[dates[new-1]].data
-	pages_ns_source.data = pages_ns_data_frames[dates[new-1]]
 
 
 def clear_callback():
@@ -458,7 +456,7 @@ time_slider = Slider(start=1, end= len(dates), value= len(dates), step = 1, titl
 date_div = Div(text = '<h1 style="text-align:center"> Stats until:'+time[-1]+'<h1>',width=1600)
 banners_div = Div(text = banners_html(len(dates)-1),width=1600)
 time_slider.on_change('value',slider_callback)
-
+'''
 pages_by_ns  =  dh.ns_info(wiki_id)
 data = sorted(pages_by_ns.items(), key = lambda x:x[0])
 data = np.array(data, dtype = object)
@@ -501,7 +499,7 @@ pages_by_ns_figure.xaxis.visible = False
 pages_by_ns_figure.yaxis.visible = False
 pages_by_ns_figure.xgrid.grid_line_color = None
 pages_by_ns_figure.ygrid.grid_line_color = None
-
+'''
 top_users = dh.top_users(wiki_id)
 sorted_top_users = sorted(top_users.items(),key = lambda x:x[0])
 array_top_users = np.array(sorted_top_users,dtype="object")
@@ -548,7 +546,7 @@ top_users_table = DataTable(source = top_users_table_ds[array_top_users[-1][0]],
 							width = 600,height = 300,
 							row_headers=False)
 top_users_source = top_users_table.source
-
+'''
 classified_users_source = classified_users_ds[array_top_users[-1][0]]
 classified_users_figure = figure(title = "Editions by classified users",name ="Editions by classified users",x_range = classified_users_source.data['labels'],y_axis_label = "Editions by grouped users",tools = tools,width=800,height = 300,sizing_mode = sizing_mode)
 classified_users_figure.vbar(x="labels",top="values", width = 0.7, color = "color",source = classified_users_source)
@@ -558,7 +556,7 @@ hover.tooltips = [
 ('Editions','@values')
 ]
 classified_users_figure.xgrid.grid_line_color = None
-
+'''
 
 top_pages = dh.top_pages(wiki_id)
 sorted_top_pages = sorted(top_pages.items(),key = lambda x:x[0])
