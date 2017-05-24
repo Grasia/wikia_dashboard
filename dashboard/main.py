@@ -97,7 +97,7 @@ def banners_html(idx):
 def cb_callback(active):
 	active1 = cbg_pages.active
 	active2 = [element + 4 for element in cbg_editions.active]
-	active3=[element + 9 for element in cbg_users.active]
+	active3=[element + 10 for element in cbg_users.active]
 	active4=[element + 17 for element in cbg_ratios.active]
 	active = active1 + active2 + active3 + active4
 	rootLayout = curdoc().get_model_by_name('graphs')
