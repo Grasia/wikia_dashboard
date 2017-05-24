@@ -5,7 +5,10 @@ import sys,getopt
 import dump_parser as wiki
 import csv
 import sqlite3
+import os.path
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "wikis_db.sqlite")
 
 
 PAGE_ID = 0;
@@ -31,7 +34,7 @@ ACTIVITY_LIMIT = 30
 def load_data(data_file):
 	file = open(data_file, encoding = 'utf-8')
 	reader = csv.reader(file,delimiter=';')
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	data = [row for row in reader]
 	name = data[1][0]
@@ -43,7 +46,7 @@ def load_data(data_file):
 	print("Preparing data")
 	data = [(wiki_id,int(row[PAGE_ID]),row[PAGE_TITLE],int(row[PAGE_NS]),int(row[REVISION_ID]),dt.strptime(row[TIMESTAMP],"%Y-%m-%dT%H:%M:%SZ"),row[CONTRIBUTOR_ID],row[CONTRIBUTOR_NAME],int(row[REVISION_BYTES])) for row in data[2:-1]]
 	print("Inserting data...")
-	c.executemany('INSERT INTO revisions(wiki_id,page_id,page_title,page_ns,revision_id,revision_date,contributor_id,contributor_name,revision_bytes,creation) VALUES(?,?,?,?,?,?,?,?,?,0)',data)
+	c.executemany('INSERT INTO revisions(wiki_id,page_id,page_title,page_ns,revision_id,revision_date,contributor_id,contributor_name,page_size,creation) VALUES(?,?,?,?,?,?,?,?,?,0)',data)
 	c.execute("update revisions set month_group = date(revision_date,'start of month') where wiki_id =?",[wiki_id])
 	c.execute("update revisions set year_group = date(revision_date,'start of year') where wiki_id =?",[wiki_id])
 	print("Setting creations")
@@ -54,7 +57,7 @@ def load_data(data_file):
 	for page in c.fetchall():
 		page = page[0]
 		print("Setting revision bytes for page " + str(page))
-		c.execute("select id,revision_id,revision_bytes,revision_date from revisions where page_id = ? and wiki_id = ? order by revision_date asc",(page,wiki_id))
+		c.execute("select id,revision_id,page_size,revision_date from revisions where page_id = ? and wiki_id = ? order by revision_date asc",(page,wiki_id))
 		revisions = c.fetchall()
 		r_bytes = []
 		for i in reversed(range(0,len(revisions))):
@@ -73,7 +76,7 @@ def load_all(args):
 
 
 def users_info(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
 	dates = c.fetchall()
@@ -95,7 +98,7 @@ def grouping(data,size=1):
 
 
 def ns_info(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=?  order by month desc ",(wiki_id,))
 	dates = c.fetchall()
@@ -109,7 +112,7 @@ def ns_info(wiki_id):
 	conn.close()
 	return result	
 def pages_info(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
 	dates = c.fetchall()
@@ -135,7 +138,7 @@ def isActive(max_date,*args : object):
 	return result
 
 def wiki_status(wiki):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki,))
 	dates = c.fetchall()
@@ -152,7 +155,7 @@ def wiki_status(wiki):
 	conn.close()
 	return result
 def monthly_avg_bytes(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute('''SELECT	month_group, avg(case when creation = 1 then null else revision_bytes end) avg_revision_bytes
 					from revisions
@@ -164,13 +167,13 @@ def monthly_avg_bytes(wiki_id):
 	return result
 
 def create_index_table():
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute('CREATE TABLE wikis(id INTEGER PRIMARY KEY AUTOINCREMENT, name)');
 	conn.close();
 
 def get_all_wikis():
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("select id from wikis where name not like '%zelda%'");
 	result = c.fetchall();
@@ -178,7 +181,7 @@ def get_all_wikis():
 	return result
 
 def get_name(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("select name from wikis where id = ?",(wiki_id,));
 	result = c.fetchone();
@@ -187,7 +190,7 @@ def get_name(wiki_id):
 
 
 def get_pages_editions(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute('''	SELECT page_id,count(*) editions
 					from revisions
@@ -199,7 +202,7 @@ def get_pages_editions(wiki_id):
 	return result
 
 def get_users_editions(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute('''	SELECT contributor_id,count(*) editions
 					from revisions
@@ -211,7 +214,7 @@ def get_users_editions(wiki_id):
 	return result
 
 def get_classified_pages(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	result = []
 	c.execute("""SELECT page_id,count(*) editions
@@ -243,7 +246,7 @@ def get_classified_pages(wiki_id):
 
 
 def get_classified_users(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
 	dates = c.fetchall()
@@ -273,19 +276,19 @@ def get_classified_users(wiki_id):
 	return result
 
 def reset_db():
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 
 	c.execute('DROP TABLE IF EXISTS revisions')
 	c.execute('''CREATE TABLE revisions
-				(id INTEGER PRIMARY KEY AUTOINCREMENT,wiki_id int ,page_id int,page_title text,page_ns int,revision_id int, revision_date timestamp,contributor_id text, contributor_name text, revision_bytes int, month_group timestamp,year_group timestamp,creation int)''')
+				(id INTEGER PRIMARY KEY AUTOINCREMENT,wiki_id int ,page_id int,page_title text,page_ns int,revision_id int, revision_date timestamp,contributor_id text, contributor_name text, page_size int,revision_bytes int, month_group timestamp,year_group timestamp,creation int)''')
 	c.execute('DROP TABLE IF EXISTS wikis')
 	c.execute('''CREATE TABLE wikis
 				(id INTEGER PRIMARY KEY AUTOINCREMENT,name text)''')
 	conn.close()
 
 def top_users(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
 	dates = c.fetchall()
@@ -300,7 +303,7 @@ def top_users(wiki_id):
 	return result
 
 def top_pages(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
 	dates = c.fetchall()
@@ -315,7 +318,7 @@ def top_pages(wiki_id):
 		result[dt.strptime(date[0],"%Y-%m-%d")]= c.fetchall()
 	return result
 def edited_pages(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute('''SELECT month_group,COUNT(DISTINCT(PAGE_ID))
 				FROM REVISIONS
@@ -343,7 +346,7 @@ def main(argv):
 		
 
 def get_editions_by_author_type(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute('''SELECT month_group,
 				(select count(*) from revisions r1 where r1.wiki_id = ? and r1.month_group = r.month_group and r1.page_ns = 0 and r1.contributor_name <> 'Anonymous' and creation = 0) logged,
@@ -356,7 +359,7 @@ def get_editions_by_author_type(wiki_id):
 	return result
 
 def get_average_page_size(wiki_id):
-	conn = sqlite3.connect("wikis_db.sqlite")
+	conn = sqlite3.connect(db_path)
 	c = conn.cursor()
 	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
 	dates = c.fetchall()
@@ -375,4 +378,8 @@ def get_average_page_size(wiki_id):
 	conn.close()
 	return result
 
-wiki_status(1)
+if __name__ == "__main__":
+	if(sys.argv):
+		print("Loading file " + sys.argv[1])
+		reset_db()
+		load_data(sys.argv[1])

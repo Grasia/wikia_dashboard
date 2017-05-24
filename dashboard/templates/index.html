@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <meta charset="utf-8">
+        <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+        <title>Wikia Dashboard</title>
+        {{ bokeh_css }}
+        {{ bokeh_js }}
         <style>
             @import url(https://fonts.googleapis.com/css?family=Noto+Sans);
             body {
@@ -10,31 +15,52 @@
               color: #fff;
               background: #2F2F2F;
              }
-      			a{
+            a{
                     font-family: 'Noto Sans', sans-serif;
                     text-rendering: optimizeLegibility;
                     color: #fff;
-      			       text-decoration: none;
-      			       font-size : 1.5em;
-      			}
-      			input{
-      				color: #fff;
-      			
-      			}
+                   text-decoration: none;
+                   font-size : 1.5em;
+            }
+            input{
+              color: #fff;
+            
+            }
+            .bk-root .bk-widget .bk-slider-horizontal{
+              width : 100%;
+            }
             .bk-tooltip{
-
-
               color:#000;
               background-color:#444444;
             }
-			
+            .users_checks {
+              border: 2px solid #1f78b4;
+              border-radius: 10px;
+              padding: 10px 10px;
+            }
+            .pages_checks {
+              border: 2px solid #33a02c;
+              border-radius: 10px;
+              padding: 10px 10px;
+            }
+            .edition_checks{
+              border: 2px solid #e31a1c;
+              border-radius: 10px;
+              padding: 10px 10px;
+
+            }
+            .other_checks{
+              border: 2px solid #ff7f00;
+              border-radius: 10px;
+              padding: 10px 10px;             
+            }
         </style>
-        <meta charset="utf-8">
-        <title>Wikia Dashboard</title>
-        {{ bokeh_css }}
-        {{ bokeh_js }}
 		<link rel="icon" href="https://media.glassdoor.com/sqll/1383456/fandom-squarelogo-1475490646274.png">
+    <script>
+    $(".clear").click(function() { return false; });
+    </script>
     </head>
+
     <body>
         <h1 style = "text-align: center">{{title}}</h1>
         {{ plot_div|indent(8) }}
