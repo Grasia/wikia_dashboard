@@ -52,5 +52,6 @@ Where file.txt is the output file from the previous step. Now everything is read
 
 Note: in case your installation of python was not with Anaconda, you should use python3 instead of python.
 
-This will open a web browser with the application.
+This will open a web browser with the application. The result should be similar to this:
 
+![alt text](https://github.com/Grasia/wikia_dashboard/blob/master/sample_snapshot.PNG)
