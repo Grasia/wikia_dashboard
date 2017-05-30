@@ -5,11 +5,11 @@ Python tool that creates a dashboard from a Wikia data dump. Intended for admini
 # Software Prerrequisites
 To use this tool you need to have the following:
 
-Python 3.5
+Python 3.5 (at least)
   
-Bokeh  0.12.5
+Bokeh  0.12.5 (at least)
  
-SQLite3 3.8.6
+SQLite3 3.8.6 (at least)
   
 The easiest way to install all the needed software is to install Anaconda. The latest version of Anaconda can be found in the following location:
  
