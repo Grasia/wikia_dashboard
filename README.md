@@ -1,6 +1,5 @@
 # wikia_dashboard
-Python tool that creates a dashboard from a Wikia data dump. Intended for administrators with access to the latest data dump.
-
+This is a python tool for the anaylisis of Wikia wikis. The application creates a dashboard from a database dump which can be used to extract information about the wiki. It is intended for wiki administrators as well as those interested in commob-based peer production analysis
 
 # Software Prerrequisites
 To use this tool you need to have the following:
