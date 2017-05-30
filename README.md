@@ -1,9 +1,9 @@
 # wikia_dashboard
 Python tool that creates a dashboard from a Wikia data dump. Intended for administrators with access to the latest data dump. To use this tool you need to have the following:
 
-  -Python 3.5 +
-  -Bokeh  0.12.5 +
-  -SQLite3 3.8.6
+  Python 3.5
+  Bokeh  0.12.5
+  SQLite3 3.8.6
   
  The easiest way to install all the needed software is to install Anaconda. The latest version of Anaconda can be found in the following location:
  
@@ -17,14 +17,14 @@ Once the installation is done you can proceed and download the project. You shou
 
 dashboard
    |
-   +---main.py
-   +---dataHandler.py
-   +---dump_parser.py
-   +---static
+   |---main.py
+   |---dataHandler.py
+   |---dump_parser.py
+   |---static
         +-----
-   +---theme.yaml
-   +---templates
-        +---index.html
+   |---theme.yaml
+   |---templates
+        |---index.html
 
 
 The first step for using the application is to generate the txt file from the XML dump. To do that you need to open a console and travel to the dashboard folder, where both the XML and the dump_parser.py file should be stored. Once there use the following command:
