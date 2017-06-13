@@ -3,9 +3,10 @@ from datetime import date  as d
 import numpy as np 
 import dataHandler as dh
 from bokeh.plotting import figure, output_file,show,gridplot,ColumnDataSource,curdoc
-from bokeh.models import LinearAxis, Range1d, HoverTool,CustomJS,Tabs,Panel
+from bokeh.models import LinearAxis, Range1d, HoverTool,CustomJS,Tabs,Panel,SingleIntervalTicker, LinearAxis
 import pandas as pd
-from bokeh.charts import Donut, Area, Bar, Scatter
+from bokeh.charts import Donut, Area, Bar, Scatter, HeatMap
+import math
 from bokeh.models.widgets import Slider, Button, Select ,DataTable, TableColumn,CheckboxGroup,Div
 from bokeh.layouts import row,widgetbox,Column,layout
 from six.moves import zip
@@ -13,10 +14,12 @@ from bokeh.palettes import small_palettes
 from random import randint
 import sys
 from bokeh.charts.attributes import CatAttr
-from bokeh.palettes import Paired9
+from bokeh.palettes import Paired9,Reds5
 from numpy import pi
+import pickle
 import os.path
-
+import gc
+import marshal
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_PATH = os.path.join(BASE_DIR, "templates")
 WIDTH = 1300
@@ -52,6 +55,45 @@ NAMESPACES = {	-2:"Media",
 				2001: "Board Thread",
 				2002:"Topic"
 }
+def generate_users_bar(current_user_source):
+	users_bar = Bar(current_user_source,values="editions",label="users",stack="edited",legend = None,title = "Editions for users",name ="Editions for users",tools = tools, width = 1000,height = 400)
+	hover = users_bar.select(dict(type=HoverTool))
+	hover.tooltips = [
+	('User','$x'),
+	('Pages','@edited'),
+	('Editions','@editions'),
+	('Total','$y')
+	]
+	users_bar.background_fill_color = "#2f2f2f"
+	users_bar.border_fill_color = "#2f2f2f"
+	return users_bar
+def generate_pages_bar(current_user_source):
+	pages_bar = Bar(current_user_source,values="editions",label="edited",stack="users",legend = None,title = "Editions for pages",name ="Editions for pages",tools = tools, width = 600,height = 400)
+	hover = pages_bar.select(dict(type=HoverTool))
+	hover.tooltips = [
+	('Page','$x'),
+	('User','@users'),
+	('Editions','@editions'),
+	('Total','$y')
+	]
+	pages_bar.background_fill_color = "#2f2f2f"
+	pages_bar.border_fill_color = "#2f2f2f"
+	return pages_bar
+def generate_editors_df(hm_data):
+	hm_df={}
+	hm_df['users'] = []
+	hm_df['edited'] = []
+	hm_df['editions']= []
+	result = {}
+	for user in hm_data:
+		elements = list(set(hm_data[user]))
+		for page in elements:
+			hm_df['users'].append(str(user))
+			hm_df['edited'].append(str(page))
+			hm_df['editions'].append(hm_data[user].count(page))
+	return hm_df
+
+
 def get_width(source):
     mindate = min(source.data['dates'])
     maxdate = max(source.data['dates'])
@@ -87,13 +129,24 @@ def banners_html(idx):
 				</tr>
 				<tr>
 				<td style='''+ td_style +'''> Total pages / logged users: '''+ str(round(total_pages/logged_users,2)) +''' '''+get_difference(round(total_pages/logged_users,2),round(pages[idx-1]/logged[idx-1],2),idx)+ '''</td>
-				<td style='''+ td_style +'''> Total editios / total pages: ''' + str(round(total_editions/total_pages,2)) +''' '''+get_difference(round(total_editions/total_pages,2),round(editions[idx-1]/pages[idx-1],2),idx)+ '''</td>
+				<td style='''+ td_style +'''> Total editions / total pages: ''' + str(round(total_editions/total_pages,2)) +''' '''+get_difference(round(total_editions/total_pages,2),round(editions[idx-1]/pages[idx-1],2),idx)+ '''</td>
 				<td style='''+ td_style +'''> Total editions / total days: '''+ str(round(total_editions/days,2)) + ''' '''+get_difference(round(total_editions/days,2),round(editions[idx-1]/((dates[idx-1]-dates[0]).days+30),2),idx)+'''</td>
 				<td style='''+ td_style +''' > Users who edited this month: '''+ str(active_users) + ''' '''+get_difference(total_active_users[idx],total_active_users[idx-1],idx)+'''</td>
 				</tr>
 			</table>
 '''
 
+def get_creation_date(creation_date,actual_date):
+	diff = actual_date - creation_date
+	days = diff.days + 30
+	if days < 31:
+		return str(days) + " days ago"
+	elif days < 60:
+		return str(int(round(days /7,0))) + " weeks ago"
+	elif days < 365:
+		return str(int(round(days / 30,0))) + " months ago"	
+	else:
+		return str(int(round(days / 365,0))) + " years ago"
 def cb_callback(active):
 	active1 = cbg_pages.active
 	active2 = [element + 4 for element in cbg_editions.active]
@@ -102,37 +155,38 @@ def cb_callback(active):
 	active = active1 + active2 + active3 + active4
 	rootLayout = curdoc().get_model_by_name('graphs')
 	children = rootLayout.children
-	for i in range(0,len(all_figures)):
-		plt = curdoc().get_model_by_name(all_figures[i].name)
-		if i in active:
-			if not plt:
-				children.insert(0,all_figures[i])
-		else:
-			if  plt:
-				children.remove(plt)
-	for fig in children:
-		fig.x_range = children[0].x_range
+	if len(active) > 0:
+		for i in range(0,len(all_figures)):
+			plt = curdoc().get_model_by_name(all_figures[i].name)
+			if i in active:
+				if not plt:
+					children.insert(0,all_figures[i])
+			else:
+				if  plt:
+					children.remove(plt)
+		for fig in children:
+			fig.x_range = children[0].x_range
+
+
 def slider_callback(attr,old,new):
 	banners_div.text = banners_html(new-1)
-	date_div.text = '<h1 style="text-align:center"> Stats until: '+time[new-1]+'<h1>'
+	date_div.text = '<h1 style="text-align:center">'+time[new-1]+'<h1>'
 	top_users_source.data = top_users_table_ds[dates[new-1]].data
 	top_pages_source.data = top_pages_ds[dates[new-1]].data
-
-
+	users_bar = generate_users_bar(users_bar_data_frames[dates[new-1]])
+	u_rootLayout = curdoc().get_model_by_name('row1')
+	u_children = u_rootLayout.children
+	u_plt = curdoc().get_model_by_name('Editions for users')
+	u_children.remove(u_plt)
+	u_children.insert(1,users_bar)
+	p_rootLayout = curdoc().get_model_by_name('row2')
+	p_children = p_rootLayout.children
+	p_pages_bar = generate_pages_bar(users_bar_data_frames[dates[new-1]])
+	p_plt = curdoc().get_model_by_name('Editions for pages')
+	p_children.remove(p_plt)
+	p_children.insert(1,pages_bar)
 def clear_callback():
 	rootLayout = curdoc().get_model_by_name('graphs')
-	children = rootLayout.children
-	active1 = cbg_pages.active
-	active2 = [element + 4 for element in cbg_editions.active]
-	active3=[element + 9 for element in cbg_users.active]
-	active4=[element + 17 for element in cbg_ratios.active]
-	active = active1 + active2 + active3 + active4
-	print(active)
-	for i in active:
-		plt = curdoc().get_model_by_name(all_figures[i].name)
-		print(all_figures[i].name)
-		if  plt:
-			children.remove(plt)
 	cbg_users.active = []
 	cbg_pages.active = []
 	cbg_editions.active = []
@@ -143,80 +197,157 @@ curdoc().title = dh.get_name(wiki_id)
 tools="hover,pan,reset,save,box_zoom,box_select,lasso_select"
 
 all_figures=[]
-d= dh.wiki_status(wiki_id)
-dsorted = sorted(d.items(),key = lambda x:x[0])
-darray = np.array(dsorted,dtype="object")
-dates = darray[:,0]
-editions_by_type = dh.get_editions_by_author_type(wiki_id)
-edited_pages = dh.edited_pages(wiki_id)
-classified_active_users = dh.get_classified_users(wiki_id)
-classified_active_users = sorted(classified_active_users.items(),key = lambda x:x[0])
-classified_active_users =  np.array(classified_active_users,dtype="object")
-avg_page_size = dh.get_average_page_size(wiki_id)
-avg_page_size = sorted(avg_page_size.items(),key = lambda x:x[0])
-avg_page_size = np.array(avg_page_size,dtype="object")
-monthly_edition_bytes = dh.monthly_avg_bytes(wiki_id)
-pages= [element[0][0] for element in darray[:,1]]
-editions = [element[0][1] for element in darray[:,1]]
-users = [element[0][2]+element[0][3] for element in darray[:,1]]
-anonymous=[element[0][3] for element in darray[:,1]]
-avg_edition_bytes = [element[0][4] for element in darray[:,1]]
-logged = [element[0][2] for element in darray[:,1]]
-editions_per_logged = [element[0][1]/element[0][2] for element in darray[:,1]]
-pages_per_logged = [element[0][0]/element[0][2] for element in darray[:,1]]
-editions_per_page = [element[0][1]/element[0][0] for element in darray[:,1]]
-pages_per_user = [element[0][0]/(element[0][2]+element[0][3]) for element in darray[:,1]]
-editions_per_user = [element[0][1]/(element[0][2]+element[0][3]) for element in darray[:,1]]
-edited_pages = [element[1] for element in edited_pages]
-pages_month = [el-pages[i-1] if i>0 else el for i,el in enumerate(pages)]
-editions_month= [el-editions[i-1] if i>0 else el for i,el in enumerate(editions)]
-logged_month= [el-logged[i-1] if i>0 else el for i,el in enumerate(logged)]
-users_month= [el-users[i-1] if i>0 else el for i,el in enumerate(users)]
-anonymous_month = [el-anonymous[i-1] if i>0 else el for i,el in enumerate(anonymous)]
-editions_per_edited_page=[element/edited_pages[idx] for idx,element in enumerate(editions_month)]
-time = [element.strftime("%b %Y") for element in dates]
-logged_editions = [element[1] for element in editions_by_type]
-anonymous_editions = [element[2] for element in editions_by_type]
-other_users = [element[1][2] for element in classified_active_users]
-active_users = [element[1][1] for element in classified_active_users]
-very_active_users = [element[1][0] for element in classified_active_users]
-total_active_users = [element[1][1]+element[1][2]+element[1][0] for element in classified_active_users]
-middle_active_users = [element[1][1]+element[1][0] for element in classified_active_users]
-avg_size = avg_page_size[:,1]
-monthly_edition_bytes = [element[1] for element in monthly_edition_bytes]
+if not os.path.isfile('wiki_status_source'):
+	d= dh.wiki_status(wiki_id)
+	dsorted = sorted(d.items(),key = lambda x:x[0])
+	darray = np.array(dsorted,dtype="object")
+	dates = darray[:,0]
+	editions_by_type = dh.get_editions_by_author_type(wiki_id)
+	edited_pages = dh.edited_pages(wiki_id)
+	classified_active_users = dh.get_classified_users(wiki_id)
+	classified_active_users = sorted(classified_active_users.items(),key = lambda x:x[0])
+	classified_active_users =  np.array(classified_active_users,dtype="object")
+	avg_page_size = dh.get_average_page_size(wiki_id)
+	avg_page_size = sorted(avg_page_size.items(),key = lambda x:x[0])
+	avg_page_size = np.array(avg_page_size,dtype="object")
+	monthly_edition_bytes = dh.monthly_avg_bytes(wiki_id)
+	pages= [element[0][0] for element in darray[:,1]]
+	editions = [element[0][1] for element in darray[:,1]]
+	users = [element[0][2]+element[0][3] for element in darray[:,1]]
+	anonymous=[element[0][3] for element in darray[:,1]]
+	avg_edition_bytes = [element[0][4] for element in darray[:,1]]
+	logged = [element[0][2] for element in darray[:,1]]
+	editions_per_logged = [element[0][1]/element[0][2] for element in darray[:,1]]
+	pages_per_logged = [element[0][0]/element[0][2] for element in darray[:,1]]
+	editions_per_page = [element[0][1]/element[0][0] for element in darray[:,1]]
+	pages_per_user = [element[0][0]/(element[0][2]+element[0][3]) for element in darray[:,1]]
+	editions_per_user = [element[0][1]/(element[0][2]+element[0][3]) for element in darray[:,1]]
+	edited_pages = [element[1] for element in edited_pages]
+	pages_month = [el-pages[i-1] if i>0 else el for i,el in enumerate(pages)]
+	editions_month= [el-editions[i-1] if i>0 else el for i,el in enumerate(editions)]
+	logged_month= [el-logged[i-1] if i>0 else el for i,el in enumerate(logged)]
+	users_month= [el-users[i-1] if i>0 else el for i,el in enumerate(users)]
+	anonymous_month = [el-anonymous[i-1] if i>0 else el for i,el in enumerate(anonymous)]
+	editions_per_edited_page=[element/edited_pages[idx] for idx,element in enumerate(editions_month)]
+	time = [element.strftime("%b %Y") for element in dates]
+	logged_editions = [element[1] for element in editions_by_type]
+	anonymous_editions = [element[2] for element in editions_by_type]
+	other_users = [element[1][2] for element in classified_active_users]
+	active_users = [element[1][1] for element in classified_active_users]
+	very_active_users = [element[1][0] for element in classified_active_users]
+	total_active_users = [element[1][1]+element[1][2]+element[1][0] for element in classified_active_users]
+	middle_active_users = [element[1][1]+element[1][0] for element in classified_active_users]
+	avg_size = avg_page_size[:,1]
+	monthly_edition_bytes = [element[1] for element in monthly_edition_bytes]
+	data = dict(
+				pages = pages,
+				editions = editions,
+				users = users,
+				dates = dates,
+				time = time,
+				editions_per_logged=editions_per_logged,
+				pages_per_logged=pages_per_logged,
+				editions_per_page = editions_per_page,
+				logged = logged,
+				anonymous = anonymous,
+				pages_month = pages_month,
+				editions_month = editions_month,
+				logged_month=logged_month,
+				users_month = users_month,
+				anonymous_month	=anonymous_month,
+				editions_per_user = editions_per_user,
+				pages_per_user = pages_per_user,
+				edited_pages = edited_pages,
+				editions_per_edited_page = editions_per_edited_page,
+				logged_editions = logged_editions,
+				anonymous_editions = anonymous_editions,
+				other_users = other_users,
+				active_users = active_users,
+				very_active_users = very_active_users,
+				total_active_users = total_active_users,
+				middle_active_users = middle_active_users,
+				avg_size = avg_size,
+				avg_edition_bytes = avg_edition_bytes,
+				monthly_edition_bytes = monthly_edition_bytes
+		)
+	wiki_status_source = ColumnDataSource(
+			data=data)
+	output = open(os.path.join(BASE_DIR,'wiki_status_source'),'wb')
+	pickle.dump(data,output,protocol = 4)
+	output.close()
+else:
+	inp = open(os.path.join(BASE_DIR,'wiki_status_source'),'rb')
+	gc.disable()
+	data = pickle.load(inp)
+	gc.enable()
+	pages = data["pages"]
+	editions =data["editions"]
+	users =data["users"]
+	dates =data["dates"]
+	time =data["time"]
+	editions_per_logged=data["editions_per_logged"]
+	pages_per_logged=data["pages_per_logged"]
+	editions_per_page =data["editions_per_page"]
+	logged =data["logged"]
+	anonymous =data["anonymous"]
+	pages_month =data["pages_month"]
+	editions_month =data["editions_month"]
+	logged_month=data["logged_month"]
+	users_month =data["users_month"]
+	anonymous_month	=data["anonymous_month"]
+	editions_per_user =data["editions_per_user"]
+	pages_per_user =data["pages_per_user"]
+	edited_pages =data["edited_pages"]
+	editions_per_edited_page =data["editions_per_edited_page"]
+	logged_editions =data["logged_editions"]
+	anonymous_editions =data["anonymous_editions"]
+	other_users =data["other_users"]
+	active_users =data["active_users"]
+	very_active_users =data["very_active_users"]
+	total_active_users =data["total_active_users"]
+	middle_active_users =data["middle_active_users"]
+	avg_size =data["avg_size"]
+	avg_edition_bytes =data["avg_edition_bytes"]
+	monthly_edition_bytes =data["monthly_edition_bytes"]
+	wiki_status_source = ColumnDataSource(
+	data= data)
+	inp.close()
 
-wiki_status_source = ColumnDataSource(
-		data=dict(
-			pages = pages,
-			editions = editions,
-			users = users,
-			dates = dates,
-			time = time,
-			editions_per_logged=editions_per_logged,
-			pages_per_logged=pages_per_logged,
-			editions_per_page = editions_per_page,
-			logged = logged,
-			anonymous = anonymous,
-			pages_month = pages_month,
-			editions_month = editions_month,
-			logged_month=logged_month,
-			users_month = users_month,
-			anonymous_month	=anonymous_month,
-			editions_per_user = editions_per_user,
-			pages_per_user = pages_per_user,
-			edited_pages = edited_pages,
-			editions_per_edited_page = editions_per_edited_page,
-			logged_editions = logged_editions,
-			anonymous_editions = anonymous_editions,
-			other_users = other_users,
-			active_users = active_users,
-			very_active_users = very_active_users,
-			total_active_users = total_active_users,
-			middle_active_users = middle_active_users,
-			avg_size = avg_size,
-			avg_edition_bytes = avg_edition_bytes,
-			monthly_edition_bytes = monthly_edition_bytes
-	))
+
+if not os.path.isfile('top_users'):
+	top_users = dh.top_users(wiki_id)
+	sorted_top_users = sorted(top_users.items(),key = lambda x:x[0])
+	array_top_users = np.array(sorted_top_users,dtype="object")
+	output = open(os.path.join(BASE_DIR,'array_top_users'),'wb')
+	pickle.dump(array_top_users,output,protocol = 4)
+	output.close()
+	top_users_table_ds=dict()
+	top_users_data=dict()
+	for top_row in array_top_users:
+		data = dict()
+		sorted_users = sorted(top_row[1],key = lambda x:x[2],reverse = True)
+		data['users'] = [element[0] for idx,element in enumerate(sorted_users) if idx < 10]
+		data['creations'] = [element[1] for idx,element in enumerate(sorted_users) if idx < 10]
+		data['editions'] = [element[2] for idx,element in enumerate(sorted_users) if idx < 10]
+		top_users_table_ds[top_row[0]] = ColumnDataSource(data = data)
+		top_users_data[top_row[0]] = data
+		size = len(sorted_users)
+	output = open(os.path.join(BASE_DIR,'top_users'),'wb')
+	pickle.dump(top_users_data,output,protocol = 4)
+	output.close()
+else:
+	inp = open(os.path.join(BASE_DIR,'top_users'),'rb')
+	gc.disable()
+	top_users_data = pickle.load(inp)
+	top_users_table_ds = {}
+	for element in top_users_data:
+		top_users_table_ds[element] =  ColumnDataSource(data = top_users_data[element])
+	inp.close()
+	inp = open(os.path.join(BASE_DIR,'array_top_users'),'rb')
+	array_top_users = pickle.load(inp)
+	array_top_users = np.array(array_top_users,dtype="object")
+	gc.enable()
+	inp.close()
 
 pages_figure = figure(title = "Total pages",name ="Total pages",y_axis_label = "Pages",height = HEIGHT, width = WIDTH,x_axis_type = "datetime",tools = tools)
 pages_figure.line('dates','pages',source=wiki_status_source,line_width=2.5,color =Paired9[3])
@@ -417,29 +548,35 @@ all_figures.append(monthly_edition_bytes_figure)
 
 for fig in all_figures:
 	fig.x_range = all_figures[0].x_range
-cbg_labels = [	"Total pages",
-				"Monthly new pages",
-				"Total pages per user",
-				"Monthly edited pages",
+cbg_labels = [	"Total",
+				"New",
+				"Total per user",
+				"Edited (monthly)",
 
-				"Total editions",
-				"Monthly editions",
-				"Total editions per user",
-				"Total editions per page",
-				"Monthly editions per edited page",
-				"Editions by author type",
+				"Total",
+				"Monthly",
+				"Total per user",
+				"Total per page",
+				"Monthly per edited page",
+				"By contributor type",
 
-				"Total users",
-				"Total logged users",
-				"Total anonymous users",
-				"Monthly new users",
-				"Monthly new logged users",
-				"Monthly new anonymous users",
-				"Active users by type",
+				"Total",
+				"Total logged",
+				"Total anonymous",
+				"New",
+				"New logged",
+				"New anoymous",
+				"Classified (monthly)",
 
-				"Average page size",
-				"Average edition bytes",
-				"Monthly average edition bytes"]
+				"Page average",
+				"Edition average (total)",
+				"Edition average (monthly)"]
+
+pages_div = Div(text = '<h1 id="pages_title"> Pages <h1>', css_classes=['pages_div','panel_div'])
+editions_div = Div(text = '<h1 id="editions_title"> Editions <h1>', css_classes=['editions_div','panel_div'])
+users_div = Div(text = '<h1 id="users_title"> Users <h1>', css_classes=['users_div','panel_div'])
+size_div = Div(text = '<h1 id="size_title"> Size <h1>', css_classes=['size_div','panel_div'])
+
 cbg_pages = CheckboxGroup(labels=cbg_labels[0:4],active=[0], css_classes =['pages_checks'])
 cbg_editions =CheckboxGroup(labels=cbg_labels[4:10],active=[0], css_classes =['edition_checks'])
 cbg_users = CheckboxGroup(labels=cbg_labels[10:17],active=[], css_classes =['users_checks'])
@@ -456,107 +593,20 @@ time_slider = Slider(start=1, end= len(dates), value= len(dates), step = 1, titl
 date_div = Div(text = '<h1 style="text-align:center"> Stats until:'+time[-1]+'<h1>',width=1600)
 banners_div = Div(text = banners_html(len(dates)-1),width=1600)
 time_slider.on_change('value',slider_callback)
-'''
-pages_by_ns  =  dh.ns_info(wiki_id)
-data = sorted(pages_by_ns.items(), key = lambda x:x[0])
-data = np.array(data, dtype = object)
-ns_dates = data[:,0]
-pages_ns_data_frames ={}
-pie_colors = ["red", "green", "blue", "orange", "yellow","purple"]
-for date in pages_by_ns:
-	pages_ns = sorted(pages_by_ns[date],key = lambda x:x[1],reverse = True)
-	pages_ns_data_frames[date]={}
-	pages_ns = np.array(pages_ns)
-	sorted_pages = sorted(pages_ns[:,1],reverse = True)
-	pages_ns_data_frames[date]['data']=list()
-	for idx,element in enumerate(sorted_pages):
- 		if idx <=5:
- 			pages_ns_data_frames[date]['data'].append(element)
- 		else:
- 			pages_ns_data_frames[date]['data'][5] += element
-	pages_ns_data_frames[date]['labels']= [NAMESPACES[element] for idx,element in enumerate(pages_ns[:,0]) if idx < 5]
-	if(len(pages_ns[:,0]) > 5):
-		pages_ns_data_frames[date]['labels'].append("Other")
-	total = sum(pages_ns_data_frames[date]['data'])
-	pages_ns_data_frames[date]['percents'] = [(element * 100)/total for element in pages_ns_data_frames[date]['data']]
-	pages_ns_data_frames[date]['percents_accumulated'] = [sum(pages_ns_data_frames[date]['percents'][:idx+1])/100 for idx,element in enumerate(pages_ns_data_frames[date]['percents'])]
-	pages_ns_data_frames[date]['starts'] = [p*2*pi for p in pages_ns_data_frames[date]['percents_accumulated'][:-1]]
-	pages_ns_data_frames[date]['ends'] = [p*2*pi for p in pages_ns_data_frames[date]['percents_accumulated'][1:]]
-	pages_ns_data_frames[date]['ends'].insert(0,pages_ns_data_frames[date]['starts'][0])
-	pages_ns_data_frames[date]['starts'].insert(0,0)
-	pages_ns_data_frames[date]['colors'] = [pie_colors[i] for i in range(0,len(pages_ns_data_frames[date]['data']))]
 
-pages_ns_source = ColumnDataSource(data=pages_ns_data_frames[ns_dates[-1]])
-
-pages_by_ns_figure = figure(title = "Pages by namespace",name ="Pages by namespace",tools = tools,height = 500,width = 500)
-pages_by_ns_figure.wedge(x=0,y=0,radius=1,start_angle = "starts",end_angle="ends",color="colors",source=pages_ns_source)
-hover = pages_by_ns_figure.select(dict(type=HoverTool))
-hover.tooltips = [
-('Namespace','@labels'),
-('Pages','@data')
-]
-pages_by_ns_figure.xaxis.visible = False
-pages_by_ns_figure.yaxis.visible = False
-pages_by_ns_figure.xgrid.grid_line_color = None
-pages_by_ns_figure.ygrid.grid_line_color = None
-'''
-top_users = dh.top_users(wiki_id)
-sorted_top_users = sorted(top_users.items(),key = lambda x:x[0])
-array_top_users = np.array(sorted_top_users,dtype="object")
-top_users_table_ds=dict()
-classified_users_ds = dict()
-for top_row in array_top_users:
-	data = dict()
-	sorted_users = sorted(top_row[1],key = lambda x:x[2],reverse = True)
-	data['users'] = [element[0] for idx,element in enumerate(sorted_users) if idx < 10]
-	data['creations'] = [element[1] for idx,element in enumerate(sorted_users) if idx < 10]
-	data['editions'] = [element[2] for idx,element in enumerate(sorted_users) if idx < 10]
-	top_users_table_ds[top_row[0]] = ColumnDataSource(data = data)
-	classified_users_data = [0,0,0]
-	classified_users_size = [0,0,0]
-	size = len(sorted_users)
-
-	for idx,user in enumerate(sorted_users):
-		percent = (idx+1)*100/size
-		if idx <= 1:
-			classified_users_data[0]+=user[2]
-			classified_users_size[0]+=1
-
-		elif idx <=10:
-			classified_users_data[1]+=user[2]
-			classified_users_size[1]+=1
-
-		else:
-			classified_users_data[2]+=user[2]
-			classified_users_size[2]+=1
-	classified_users_ds[top_row[0]] = ColumnDataSource(data=dict(
-		values = classified_users_data,
-		labels = ["Top 1%", "Middle 9%", "Bottom 90%"],
-		color = [Paired9[1],Paired9[3],Paired9[7]],
-		users = classified_users_size
-		))
 
 top_users_columns = [
 			TableColumn(field="users",title="User"),
 			TableColumn(field="editions",title="Editions"),
 			TableColumn(field="creations",title="Creations")
 	]
-top_users_table = DataTable(source = top_users_table_ds[array_top_users[-1][0]], 
+date = dates[-1]
+top_users_table = DataTable(source = top_users_table_ds[date], 
 							columns = top_users_columns,
-							width = 600,height = 300,
+							width = 500,height = 300,
 							row_headers=False)
 top_users_source = top_users_table.source
-'''
-classified_users_source = classified_users_ds[array_top_users[-1][0]]
-classified_users_figure = figure(title = "Editions by classified users",name ="Editions by classified users",x_range = classified_users_source.data['labels'],y_axis_label = "Editions by grouped users",tools = tools,width=800,height = 300,sizing_mode = sizing_mode)
-classified_users_figure.vbar(x="labels",top="values", width = 0.7, color = "color",source = classified_users_source)
-hover = classified_users_figure.select(dict(type=HoverTool))
-hover.tooltips = [
-('Users','@users'),
-('Editions','@values')
-]
-classified_users_figure.xgrid.grid_line_color = None
-'''
+
 
 top_pages = dh.top_pages(wiki_id)
 sorted_top_pages = sorted(top_pages.items(),key = lambda x:x[0])
@@ -566,7 +616,7 @@ for top_row in array_top_pages:
 	data = dict()
 	data['page_id'] = [element[0] for element in top_row[1]]
 	data['page_name'] = [element[1] for element in top_row[1]]
-	data['page_creation'] = [element[2] for element in top_row[1]]
+	data['page_creation'] = [get_creation_date(dt.strptime(element[2],'%Y-%m-%d %H:%M:%S'),top_row[0]) for element in top_row[1]]
 	data['page_editions'] = [element[3] for element in top_row[1]]
 	data['page_contributors'] = [element[4] for element in top_row[1]]
 	top_pages_ds[top_row[0]] = ColumnDataSource(data = data)
@@ -584,23 +634,48 @@ top_pages_div = Div(text='<h3 style="text-align:center"> Top Pages </h3>',width 
 top_pages_table = DataTable(source = top_pages_ds[array_top_pages[-1][0]], columns = top_pages_columns,width=1000,height = 300,row_headers=False)
 top_pages_source = top_pages_table.source
 
-clear_btn = Button(label="Clear",button_type="danger",css_classes=['clear'])
+clear_btn = Button(label="Clear",button_type=None,css_classes=['clear'])
 clear_btn.on_click(clear_callback)
 
 
+edited_by_users = dh.get_edited_by_users(wiki_id)
+edited_sources = {}
+users_bar_data_frames = {}
+for d in dates:
+	users_bar_data_frames[d]=generate_editors_df(edited_by_users[d])
+current_user_source = users_bar_data_frames[dates[-1]]
+
+users_bar = generate_users_bar(current_user_source)
+pages_bar = generate_pages_bar(current_user_source)
 
 
+'''
+users_bar = figure(title = "Editions for users", y_range = edited_source.data['users'],name ="Editions for users",tools = tools, width = 1000,height = 400)
 
+users_bar.hbar(y = 'users',height = 0.3,right='editions',stacked='edited',source = edited_source)
+users_bar.xgrid.grid_line_color = None
+users_bar.ygrid.grid_line_color = None
+hover = users_bar.select(dict(type=HoverTool))
+hover.tooltips = [
+('User','@users'),
+('Editions this month','@editions')
+]
+'''
+'''
+ticker = SingleIntervalTicker(interval=1, num_minor_ticks=0)
+xaxis = LinearAxis(ticker=ticker)
+hm.add_layout(xaxis, 'below')
+'''
 
 timelines = Column(all_figures[0],all_figures[4],name = "graphs")
-cbg_widgetbox = widgetbox(Div(text = "Please select the charts you wish to see..."),cbg_pages,cbg_editions,cbg_users,cbg_ratios,clear_btn,width = 300)
+cbg_widgetbox = widgetbox(Div(text = "Please select the charts you wish to see..."),pages_div,cbg_pages,editions_div,cbg_editions,users_div,cbg_users,size_div,cbg_ratios,clear_btn,width = 300)
 main_tab_row= row(cbg_widgetbox,timelines)
 main_tab = Panel(child = main_tab_row,title="Evolution")
 top_users_col = Column(top_users_div,top_users_table)
 top_pages_col = Column(top_pages_div,top_pages_table)
 
-other_row_1=row(top_users_col)
-other_row_2=row(top_pages_col)
+other_row_1=row(top_users_col,users_bar,name='row1')
+other_row_2=row(top_pages_col,pages_bar,name='row2')
 other_layout = Column(	widgetbox(date_div),
 						widgetbox(time_slider),
 						widgetbox(banners_div),
