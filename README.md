@@ -28,11 +28,13 @@ Once the installation is done you can proceed and clone this repository to your 
 
 # Instructions for Linux systems
 
-First, check you've installed python 3:
+First, check you've installed both python 3 and pip3:
 `python3 --version`
+`pip3 --version`
 
-or install it if you don't have it:
+or install it if you don't have them:
 `sudo apt install python3`
+`sudo apt install python3-pip`
 
 Install anaconda following the steps described [here](https://www.continuum.io/downloads#linux).
 
@@ -51,6 +53,13 @@ On the section database dumps you should see two links: one for current pages an
 http://community.wikia.com/wiki/Help:Database_download
 
 Once you download and unzipped the file, you must move it to the project folder that you previously downloaded.
+
+## Using a sample datadump
+Alternatively, you can use the Laguna Negra's datadump included in this repo as an example.
+
+To use this, you'll need to decompress the 7zip file located in sample_data into the dashboard folder. And then follow the instructions written below.
+In a unix-like system this could be simply done with the 7zip utility:
+`7z e sample_data/eslagunanegra_pages_full.xml.7z -odashboard/`
 
 # Setting up the project
 
