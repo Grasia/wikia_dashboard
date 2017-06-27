@@ -1,2 +1,3 @@
 dashboard/data/
 dashboard/__pycache__/
+**/wikis_db.sqlite
