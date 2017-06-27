@@ -6,8 +6,17 @@ import sys
 
 Debug = False
 
-def xml_to_txt(filename):
 
+def has_empty_field(l):
+  field_empty = False;
+  i = 0
+  while (not field_empty and i<len(l)):
+    field_empty = (l[i] == '');
+    i = i + 1
+  return field_empty
+
+
+def xml_to_txt(filename):
 
   ### BEGIN xmt_to_txt var declarations ###
   # Shared variables for parser subfunctions:
@@ -67,7 +76,7 @@ def xml_to_txt(filename):
         if _current_tag == 'id':
           contributor_id = data
         elif _current_tag == 'username':
-          contributor_name = data
+          contributor_name = '|' + data + '|'
         elif _current_tag == 'ip':
           contributor_id = data
           contributor_name = 'Anonymous'
@@ -84,14 +93,23 @@ def xml_to_txt(filename):
     elif tag == 'contributor':
       _parent = 'revision'
 
-    # print revision to revision output txt
+    # print revision to revision output csv
     if tag == 'revision':
-      #revision_row = list(map(str,[page_id,page_title,page_ns,revision_id,timestamp,contributor_id,contributor_name,bytes_var]))
+      
       revision_row = [page_id,page_title,page_ns,revision_id,timestamp,contributor_id,contributor_name,bytes_var]
-      output_txt.write(";".join(revision_row) + '\n')
+      
+      # Do not print (skip) revisions that has any of the fields not available
+      if not has_empty_field(revision_row):
+        output_txt.write(";".join(revision_row) + '\n')
+      else:
+        print("The following line has imcomplete info and therefore it's been removed from the dataset:")
+        print(revision_row)
+      
+      # Debug lines to standard output
       if Debug:
         print(";".join(revision_row))
-      # Cleaning data that has to be recalculated in every row for hygiene and better debugging:
+      
+      # Clearing data that has to be recalculated for every row:
       revision_id = timestamp = contributor_id = contributor_name = bytes_var = ''
 
     _current_tag = '' # Very important!!! Otherwise blank "orphan" data between tags remain in _current_tag and trigger data_handler!! >:(
