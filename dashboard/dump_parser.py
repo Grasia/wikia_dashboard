@@ -35,7 +35,7 @@ def xml_to_txt(filename):
       _parent = tag
     
     if tag == 'upload':
-      print("!! Warning: '<upload>' element not being handled")
+      print("!! Warning: '<upload>' element not being handled", file=sys.stderr)
 
   def data_handler(data):
     nonlocal output_txt, _current_tag, _parent
@@ -51,7 +51,7 @@ def xml_to_txt(filename):
     elif _parent:
       if _parent == 'page':
         if _current_tag == 'title':
-          page_title = data
+          page_title = '|' + data + '|'
         elif _current_tag == 'id':
           page_id = data
           if Debug:

@@ -36,7 +36,7 @@ ACTIVITY_LIMIT = 30
 
 def load_data(data_file):
   file = open(data_file, encoding = 'utf-8')
-  reader = csv.reader(file,delimiter=';')
+  reader = csv.reader(file,delimiter=';',quotechar='|')
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
   data = [row for row in reader]
