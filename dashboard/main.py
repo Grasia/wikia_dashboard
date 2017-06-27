@@ -56,25 +56,22 @@ NAMESPACES = {	-2:"Media",
 				2002:"Topic"
 }
 def generate_users_bar(current_user_source):
-	users_bar = Bar(current_user_source,values="editions",label="users",stack="edited",legend = None,title = "Editions for users",name ="Editions for users",tools = tools, width = 1000,height = 400)
+	users_bar = Bar(current_user_source,values="editions",xlabel = None,ylabel = None,label="users",stack="edited",legend = None,title = "Editions for users",name ="Editions for users",tools = tools, width = 1000,height = 400)
 	hover = users_bar.select(dict(type=HoverTool))
 	hover.tooltips = [
 	('User','$x'),
-	('Pages','@edited'),
-	('Editions','@editions'),
-	('Total','$y')
-	]
+	('Page','@edited'),
+	('Editions','@height')]
 	users_bar.background_fill_color = "#2f2f2f"
 	users_bar.border_fill_color = "#2f2f2f"
 	return users_bar
-def generate_pages_bar(current_user_source):
-	pages_bar = Bar(current_user_source,values="editions",label="edited",stack="users",legend = None,title = "Editions for pages",name ="Editions for pages",tools = tools, width = 600,height = 400)
+def generate_pages_bar(current_pages_source):
+	pages_bar = Bar(current_pages_source,values="editions",label="edited",xlabel = None,ylabel = None, stack="users",legend = None,title = "Editions for pages",name ="Editions for pages",tools = tools, width = 600,height = 400)
 	hover = pages_bar.select(dict(type=HoverTool))
 	hover.tooltips = [
 	('Page','$x'),
 	('User','@users'),
-	('Editions','@editions'),
-	('Total','$y')
+	('Editions','@height')
 	]
 	pages_bar.background_fill_color = "#2f2f2f"
 	pages_bar.border_fill_color = "#2f2f2f"
@@ -173,17 +170,20 @@ def slider_callback(attr,old,new):
 	date_div.text = '<h1 style="text-align:center">'+time[new-1]+'<h1>'
 	top_users_source.data = top_users_table_ds[dates[new-1]].data
 	top_pages_source.data = top_pages_ds[dates[new-1]].data
-	users_bar = generate_users_bar(users_bar_data_frames[dates[new-1]])
+	df = users_bar_data_frames[dates[new-1]]
+	users_bar = generate_users_bar(df)
 	u_rootLayout = curdoc().get_model_by_name('row1')
 	u_children = u_rootLayout.children
 	u_plt = curdoc().get_model_by_name('Editions for users')
-	u_children.remove(u_plt)
+	if u_plt in u_children:
+		u_children.remove(u_plt)
 	u_children.insert(1,users_bar)
 	p_rootLayout = curdoc().get_model_by_name('row2')
 	p_children = p_rootLayout.children
-	p_pages_bar = generate_pages_bar(users_bar_data_frames[dates[new-1]])
+	pages_bar = generate_pages_bar(df)
 	p_plt = curdoc().get_model_by_name('Editions for pages')
-	p_children.remove(p_plt)
+	if p_plt in p_children:
+		p_children.remove(p_plt)
 	p_children.insert(1,pages_bar)
 def clear_callback():
 	rootLayout = curdoc().get_model_by_name('graphs')
@@ -643,15 +643,13 @@ edited_sources = {}
 users_bar_data_frames = {}
 for d in dates:
 	users_bar_data_frames[d]=generate_editors_df(edited_by_users[d])
-current_user_source = users_bar_data_frames[dates[-1]]
-
-users_bar = generate_users_bar(current_user_source)
-pages_bar = generate_pages_bar(current_user_source)
+current_u_source = users_bar_data_frames[dates[-1]]
+users_bar = generate_users_bar(current_u_source)
+pages_bar = generate_pages_bar(current_u_source)
 
 
 '''
 users_bar = figure(title = "Editions for users", y_range = edited_source.data['users'],name ="Editions for users",tools = tools, width = 1000,height = 400)
-
 users_bar.hbar(y = 'users',height = 0.3,right='editions',stacked='edited',source = edited_source)
 users_bar.xgrid.grid_line_color = None
 users_bar.ygrid.grid_line_color = None
