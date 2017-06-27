@@ -612,18 +612,3 @@ other_layout = Column(  widgetbox(date_div),
               sizing_mode = sizing_mode)
 other_tab = Panel(child = other_layout, title = "Statistics")
 curdoc().add_root(Tabs(tabs=[main_tab,other_tab]))
-
-
-
-# dh.reset_db()
-# wiki_id = dh.load_data("eszelda_pages_full.txt")
-# print(wiki_id)
-# dashboard(wiki_id)
-
-# if __name__ == "__main__":
-#   if(sys.argv):
-    
-#     dh.reset_db()
-#     wiki_id = dh.load_data(sys.argv[1])
-#     print(wiki_id)
-#     dashboard(wiki_id)

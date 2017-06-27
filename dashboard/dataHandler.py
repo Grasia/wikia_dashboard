@@ -72,12 +72,6 @@ def load_data(data_file):
   return wiki_id
 
 
-def load_all(args):
-  for arg in args:
-    yield load_data(arg)
-
-
-
 def users_info(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -114,6 +108,8 @@ def ns_info(wiki_id):
     result[dt.strptime(date[0],"%Y-%m-%d")] = c.fetchall()
   conn.close()
   return result 
+  
+  
 def pages_info(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -133,12 +129,15 @@ def pages_info(wiki_id):
     result[date] = c.fetchall()
   conn.close()
   return result
+  
+  
 def isActive(max_date,*args : object):
   result = []
   for date in args:
     delta = max_date - date
     result.append(delta.days < ACTIVITY_LIMIT)
   return result
+
 
 def wiki_status(wiki):
   conn = sqlite3.connect(db_path)
@@ -157,6 +156,8 @@ def wiki_status(wiki):
     result[dt.strptime(date[0],"%Y-%m-%d")] = c.fetchall()
   conn.close()
   return result
+  
+  
 def monthly_avg_bytes(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -169,11 +170,13 @@ def monthly_avg_bytes(wiki_id):
   conn.close()
   return result
 
+
 def create_index_table():
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
   c.execute('CREATE TABLE wikis(id INTEGER PRIMARY KEY AUTOINCREMENT, name)');
   conn.close();
+
 
 def get_all_wikis():
   conn = sqlite3.connect(db_path)
@@ -182,6 +185,7 @@ def get_all_wikis():
   result = c.fetchall();
   conn.close();
   return result
+
 
 def get_name(wiki_id):
   conn = sqlite3.connect(db_path)
@@ -204,6 +208,7 @@ def get_pages_editions(wiki_id):
   conn.close()
   return result
 
+
 def get_users_editions(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -215,6 +220,7 @@ def get_users_editions(wiki_id):
   result = c.fetchall()
   conn.close()
   return result
+
 
 def get_classified_pages(wiki_id):
   conn = sqlite3.connect(db_path)
@@ -278,6 +284,7 @@ def get_classified_users(wiki_id):
   conn.close()
   return result
 
+
 def reset_db():
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -289,6 +296,7 @@ def reset_db():
   c.execute('''CREATE TABLE wikis
         (id INTEGER PRIMARY KEY AUTOINCREMENT,name text)''')
   conn.close()
+
 
 def top_users(wiki_id):
   conn = sqlite3.connect(db_path)
@@ -305,6 +313,7 @@ def top_users(wiki_id):
     result[dt.strptime(date[0],"%Y-%m-%d")] = c.fetchall()
   return result
 
+
 def top_pages(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -320,6 +329,8 @@ def top_pages(wiki_id):
             limit 10''',(wiki_id,date[0]))
     result[dt.strptime(date[0],"%Y-%m-%d")]= c.fetchall()
   return result
+  
+  
 def edited_pages(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -330,6 +341,7 @@ def edited_pages(wiki_id):
         order by month_group asc''',(wiki_id,))
   result = c.fetchall()
   return result
+
 
 def main(argv):
   try:
@@ -342,11 +354,10 @@ def main(argv):
     print(arg)
     if opt == '-h':
       print('dataHandler.py -l <inputfile>')
-      sys.exit()
+      sys.exit(0)
     elif opt == "-l":
       load_data(arg)
 
-    
 
 def get_editions_by_author_type(wiki_id):
   conn = sqlite3.connect(db_path)
@@ -360,6 +371,7 @@ def get_editions_by_author_type(wiki_id):
       order by month_group asc''',[wiki_id,wiki_id,wiki_id])
   result = c.fetchall()
   return result
+
 
 def get_average_page_size(wiki_id):
   conn = sqlite3.connect(db_path)
@@ -380,6 +392,7 @@ def get_average_page_size(wiki_id):
     result[date[0]] = np.mean(fetch[:,2])
   conn.close()
   return result
+
 
 if __name__ == "__main__":
   if(sys.argv):
