@@ -6,7 +6,7 @@ To use this tool you need to have the following:
 
 Python 3.5 (at least)
   
-Bokeh  0.12.5 (at least)
+Bokeh  0.12.6 (at least)
  
 SQLite3 3.8.6 (at least)
   

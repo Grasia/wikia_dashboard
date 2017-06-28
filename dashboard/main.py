@@ -8,14 +8,13 @@ import dataHandler as dh
 from bokeh.plotting import figure, output_file,show,gridplot,ColumnDataSource,curdoc
 from bokeh.models import LinearAxis, Range1d, HoverTool,CustomJS,Tabs,Panel
 import pandas as pd
-from bokeh.charts import Donut, Area, Bar, Scatter
+from bkcharts import Donut, Area, Bar, Scatter
 from bokeh.models.widgets import Slider, Button, Select ,DataTable, TableColumn,CheckboxGroup,Div
 from bokeh.layouts import row,widgetbox,Column,layout
 from six.moves import zip
 from bokeh.palettes import small_palettes
 from random import randint
 import sys
-from bokeh.charts.attributes import CatAttr
 from bokeh.palettes import Paired9
 from numpy import pi
 import os.path
