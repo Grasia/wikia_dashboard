@@ -10,7 +10,10 @@ import csv
 import sqlite3
 import os.path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'databases')
+if (not os.path.isdir(BASE_DIR)):
+  os.mkdir(BASE_DIR)
+  
 db_path = os.path.join(BASE_DIR, "wikis_db.sqlite")
 
 
