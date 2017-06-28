@@ -3,8 +3,8 @@
 
 from datetime import datetime as dt
 from datetime import date  as d
-import numpy as np 
-import data_stadistics as dh
+import numpy as np
+import dataHandler as dh
 from bokeh.plotting import figure, output_file,show,gridplot,ColumnDataSource,curdoc
 from bokeh.models import LinearAxis, Range1d, HoverTool,CustomJS,Tabs,Panel
 import pandas as pd
@@ -68,7 +68,7 @@ def get_difference(current,last,idx):
     value = '<span style = "color:#e6286a"> ' + str(abs(diff)) +' </span>'
   else:
     arrow = '<img src="dashboard/static/equal.png"  style="vertical-align:middle" width = 20 height= 20 /> '
-    value = '<span style = "color:#00a2ff"> ' + str(abs(diff)) +' </span>'  
+    value = '<span style = "color:#00a2ff"> ' + str(abs(diff)) +' </span>'
   return "("+arrow+value+")"
 def banners_html(idx):
   total_pages = pages[idx]
@@ -543,7 +543,7 @@ top_users_columns = [
       TableColumn(field="editions",title="Editions"),
       TableColumn(field="creations",title="Creations")
   ]
-top_users_table = DataTable(source = top_users_table_ds[array_top_users[-1][0]], 
+top_users_table = DataTable(source = top_users_table_ds[array_top_users[-1][0]],
               columns = top_users_columns,
               width = 600,height = 300,
               row_headers=False)

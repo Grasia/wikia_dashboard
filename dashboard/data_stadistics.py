@@ -28,6 +28,7 @@ def end_stadistics():
   Currently being used Statistics
 '''
 
+
 def get_name(wiki_id):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
@@ -289,7 +290,7 @@ def get_classified_pages(wiki_id):
          where page_ns = 0 and wiki_id = ?
          group by page_id
          having editions < 1000 and editions > 100""",(wiki_id,))
-  result.append(len(c.fetchall()))  
+  result.append(len(c.fetchall()))
   c.execute("""SELECT page_id,count(*) editions
          from revisions
          where page_ns = 0 and wiki_id = ?
