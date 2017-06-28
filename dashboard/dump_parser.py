@@ -16,21 +16,21 @@ def has_empty_field(l):
   return field_empty
 
 
-def xml_to_txt(filename):
+def xml_to_csv(filename):
 
-  ### BEGIN xmt_to_txt var declarations ###
+  ### BEGIN xmt_to_csv var declarations ###
   # Shared variables for parser subfunctions:
-  ## output_txt, _current_tag, _parent
+  ## output_csv, _current_tag, _parent
   ## page_id,page_title,page_ns,revision_id,timestamp,contributor_id,contributor_name,bytes_var
 
-  output_txt = None
+  output_csv = None
   _parent = None
   _current_tag = ''
   page_id = page_title = page_ns = revision_id = timestamp = contributor_id = contributor_name = bytes_var = ''
   site_name = None
   
   def start_tag(tag, attrs):
-    nonlocal output_txt, _current_tag, _parent
+    nonlocal output_csv, _current_tag, _parent
     nonlocal bytes_var
 
     _current_tag = tag
@@ -47,7 +47,7 @@ def xml_to_txt(filename):
       print("!! Warning: '<upload>' element not being handled", file=sys.stderr)
 
   def data_handler(data):
-    nonlocal output_txt, _current_tag, _parent
+    nonlocal output_csv, _current_tag, _parent
     nonlocal page_id,page_title,page_ns,revision_id,timestamp,contributor_id,contributor_name
     nonlocal site_name
 
@@ -56,7 +56,7 @@ def xml_to_txt(filename):
 
     if site_name == None and _current_tag == 'sitename':
       site_name = data
-      output_txt.write(data + '\n')
+      output_csv.write(data + '\n')
     elif _parent:
       if _parent == 'page':
         if _current_tag == 'title':
@@ -82,7 +82,7 @@ def xml_to_txt(filename):
           contributor_name = 'Anonymous'
 
   def end_tag(tag):
-    nonlocal output_txt, _current_tag, _parent
+    nonlocal output_csv, _current_tag, _parent
     nonlocal page_id,page_title,page_ns,revision_id,timestamp,contributor_id,contributor_name,bytes_var
 
     # uploading one level of parent if any of these tags close
@@ -100,7 +100,7 @@ def xml_to_txt(filename):
       
       # Do not print (skip) revisions that has any of the fields not available
       if not has_empty_field(revision_row):
-        output_txt.write(";".join(revision_row) + '\n')
+        output_csv.write(";".join(revision_row) + '\n')
       else:
         print("The following line has imcomplete info and therefore it's been removed from the dataset:")
         print(revision_row)
@@ -115,7 +115,7 @@ def xml_to_txt(filename):
     _current_tag = '' # Very important!!! Otherwise blank "orphan" data between tags remain in _current_tag and trigger data_handler!! >:(
 
 
-  ### BEGIN xml_to_txt body ###
+  ### BEGIN xml_to_csv body ###
 
   # Initializing xml parser
   parser = xml.parsers.expat.ParserCreate()
@@ -127,18 +127,18 @@ def xml_to_txt(filename):
   parser.buffer_text = True
   parser.buffer_size = 1024
 
-  # writing header for output txt file
-  output_txt = open(filename[0:-3]+"txt",'w')
-  output_txt.write(";".join(["page_id","page_title","page_ns","revision_id","timestamp","contributor_id","contributor_name","bytes"]))
-  output_txt.write("\n")
+  # writing header for output csv file
+  output_csv = open(filename[0:-3]+"csv",'w')
+  output_csv.write(";".join(["page_id","page_title","page_ns","revision_id","timestamp","contributor_id","contributor_name","bytes"]))
+  output_csv.write("\n")
 
-  # Parsing xml and writting proccesed data to output txt
+  # Parsing xml and writting proccesed data to output csv
   print("Processing...")
   parser.ParseFile(input_file)
   print("Done processing")
 
   input_file.close()
-  output_txt.close()
+  output_csv.close()
 
   return True
 
@@ -147,7 +147,7 @@ if __name__ == "__main__":
   print (sys.argv)
   if(len(sys.argv)) == 2:
     print("Starting to parse file " + sys.argv[1])
-    if xml_to_txt(sys.argv[1]):
+    if xml_to_csv(sys.argv[1]):
       print("Data dump parsed succesfully")
   else:
     print("Error: Invalid number of arguments. Please specify a .xml file to parse")
