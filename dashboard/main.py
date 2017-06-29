@@ -19,6 +19,9 @@ from bokeh.palettes import Paired9
 from numpy import pi
 import os.path
 
+# For production code:
+# BOKEH_VALIDATE_DOC=false
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_PATH = os.path.join(BASE_DIR, "templates")
 WIDTH = 1300
@@ -54,6 +57,8 @@ NAMESPACES = {  -2:"Media",
         2001: "Board Thread",
         2002:"Topic"
 }
+
+
 def get_width(source):
     mindate = min(source.data['dates'])
     maxdate = max(source.data['dates'])
