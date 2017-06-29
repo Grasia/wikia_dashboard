@@ -367,7 +367,7 @@ def get_average_page_size(wiki_id):
 	for date in dates:
 		c.execute('''SELECT	page_id,
 							max(revision_date),
-							revision_bytes,
+							page_size,
 							revision_id
 					 from revisions
 				    where month_group <= ? and page_ns = 0 and wiki_id = ?
@@ -377,6 +377,56 @@ def get_average_page_size(wiki_id):
 		result[date[0]] = np.mean(fetch[:,2])
 	conn.close()
 	return result
+def get_edited_by_users(wiki_id):
+	conn = sqlite3.connect(db_path)
+	c = conn.cursor()
+	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
+	dates = c.fetchall()
+	result ={}
+	for date in dates:
+		c.execute('''SELECT distinct(contributor_id), contributor_name from revisions where month_group = ? and page_ns = 0 and wiki_id = ?''',(date[0],wiki_id))
+		users = c.fetchall()
+		date_result = {}
+		for user in users:
+			u_result = []
+			c.execute('''SELECT page_title 
+							from revisions
+							where wiki_id = ? and month_group=? and contributor_id = ?''',(wiki_id,date[0],user[0]))
+			for i in c.fetchall():
+				u_result.append(i[0])
+			if user[1] != 'Anonymous':
+				date_result[user[1]] =tuple(u_result)
+			else:
+				date_result[user[0]] =tuple(u_result)
+		result[dt.strptime(date[0],"%Y-%m-%d")]= date_result
+	return result
+		
+
+def get_pages(wiki_id):
+	conn = sqlite3.connect(db_path)
+	c = conn.cursor()
+	c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
+	dates = c.fetchall()
+	result ={}
+	for date in dates:
+		c.execute('''SELECT page_id,
+							page_title,
+							count(distinct(contributor_id)),
+							count(*)
+							from revisions
+							where wiki_id = ? and month_group<=? and page_ns = 0
+							group by page_id''',(wiki_id,date[0]))
+		first_result = c.fetchall()
+		c.execute('''SELECT max(revision_date),
+							page_size
+							from revisions
+							where wiki_id = ? and month_group<=? and page_ns = 0
+							group by page_id''',(wiki_id,date[0]))
+		second = c.fetchall()
+		first_result = [element+second[idx]  for idx,element in enumerate(first_result)]
+		result[dt.strptime(date[0],"%Y-%m-%d")]= first_result
+	return result
+		
 
 if __name__ == "__main__":
 	if(sys.argv):
