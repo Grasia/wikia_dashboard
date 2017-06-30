@@ -5,22 +5,20 @@ import numpy as np
 import sqlite3
 import os.path
 
-BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'databases')
-global c, conn, db_path;
-db_path = os.path.join(BASE_DIR, "wikis_db.sqlite")
-
+global c, conn;
 
 '''
   Open and close ddbb
 '''
 
-def init_stadistics(db_name):
-  db_path = os.path.join(BASE_DIR, db_name)
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+def init_statistics(db_path):
+  global c, conn;
+  conn = sqlite3.connect(db_path);
+  c = conn.cursor();
 
 
-def end_stadistics():
+def end_statistics():
+  global c, conn;
   conn.close();
 
 
@@ -30,17 +28,14 @@ def end_stadistics():
 
 
 def get_name(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("select name from wikis where id = ?",(wiki_id,));
   result = c.fetchone();
-  conn.close();
   return result[0]
 
 
 def wiki_status(wiki):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki,))
   dates = c.fetchall()
   result ={}
@@ -53,13 +48,11 @@ def wiki_status(wiki):
           from revisions
           where month_group <= ? and page_ns = 0 and wiki_id = ?''',[date[0],wiki])
     result[dt.strptime(date[0],"%Y-%m-%d")] = c.fetchall()
-  conn.close()
   return result
 
 
 def get_editions_by_author_type(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute('''SELECT month_group,
         (select count(*) from revisions r1 where r1.wiki_id = ? and r1.month_group = r.month_group and r1.page_ns = 0 and r1.contributor_name <> 'Anonymous' and creation = 0) logged,
         (select count(*) from revisions r1 where r1.wiki_id = ? and r1.month_group = r.month_group and r1.page_ns = 0 and r1.contributor_name = 'Anonymous' and creation = 0) anonymous
@@ -72,8 +65,7 @@ def get_editions_by_author_type(wiki_id):
 
 
 def edited_pages(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute('''SELECT month_group,COUNT(DISTINCT(PAGE_ID))
         FROM REVISIONS
         WHERE wiki_id = ? and page_ns = 0 and creation = 0
@@ -84,8 +76,7 @@ def edited_pages(wiki_id):
 
 
 def get_classified_users(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
   dates = c.fetchall()
   result ={}
@@ -110,13 +101,11 @@ def get_classified_users(wiki_id):
           having editions < 5''',[date[0],wiki_id])
     row.append(len(c.fetchall()))
     result[date[0]] = row
-  conn.close()
   return result
 
 
 def get_average_page_size(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
   dates = c.fetchall()
   result ={}
@@ -131,26 +120,22 @@ def get_average_page_size(wiki_id):
           ''',[date[0],wiki_id])
     fetch = np.array(c.fetchall(),dtype="object")
     result[date[0]] = np.mean(fetch[:,2])
-  conn.close()
   return result
 
 
 def monthly_avg_bytes(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute('''SELECT month_group, avg(case when creation = 1 then null else revision_bytes end) avg_revision_bytes
           from revisions
            where page_ns = 0 and wiki_id = ?
            group by month_group
            order by month_group asc''',(wiki_id,))
   result = c.fetchall()
-  conn.close()
   return result
 
 
 def top_users(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
   dates = c.fetchall()
   result ={}
@@ -165,8 +150,7 @@ def top_users(wiki_id):
 
 
 def top_pages(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
   dates = c.fetchall()
   result ={}
@@ -182,8 +166,7 @@ def top_pages(wiki_id):
 
 
 def get_edited_by_users(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
+  global c, conn;
   c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month asc ",(wiki_id,))
   dates = c.fetchall()
   result ={}
@@ -203,6 +186,35 @@ def get_edited_by_users(wiki_id):
       else:
         date_result[user[0]] =tuple(u_result)
     result[dt.strptime(date[0],"%Y-%m-%d")]= date_result
+  return result
+
+
+def get_classified_users(wiki_id):
+  global c, conn;
+  c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
+  dates = c.fetchall()
+  result ={}
+  for date in dates:
+    row = []
+    c.execute('''SELECT count(contributor_id) editions, contributor_id
+          from revisions
+          where month_group = ? and page_ns = 0 and wiki_id = ?
+          group by contributor_id
+          having editions > 100''',[date[0],wiki_id])
+    row.append(len(c.fetchall()))
+    c.execute('''SELECT count(contributor_id) editions, contributor_id
+          from revisions
+          where month_group = ? and page_ns = 0 and wiki_id = ?
+          group by contributor_id
+          having editions > 5 and editions < 100''',[date[0],wiki_id])
+    row.append(len(c.fetchall()))
+    c.execute('''SELECT count(contributor_id) editions, contributor_id
+          from revisions
+          where month_group = ? and page_ns = 0 and wiki_id = ?
+          group by contributor_id
+          having editions < 5''',[date[0],wiki_id])
+    row.append(len(c.fetchall()))
+    result[date[0]] = row
   return result
 
 
@@ -331,36 +343,4 @@ def get_classified_pages(wiki_id):
   result.append(len(c.fetchall()))
   conn.close()
   return result
-
-
-def get_classified_users(wiki_id):
-  conn = sqlite3.connect(db_path)
-  c = conn.cursor()
-  c.execute("SELECT distinct(month_group) month from revisions where wiki_id=? and page_ns = 0 order by month desc ",(wiki_id,))
-  dates = c.fetchall()
-  result ={}
-  for date in dates:
-    row = []
-    c.execute('''SELECT count(contributor_id) editions, contributor_id
-          from revisions
-          where month_group = ? and page_ns = 0 and wiki_id = ?
-          group by contributor_id
-          having editions > 100''',[date[0],wiki_id])
-    row.append(len(c.fetchall()))
-    c.execute('''SELECT count(contributor_id) editions, contributor_id
-          from revisions
-          where month_group = ? and page_ns = 0 and wiki_id = ?
-          group by contributor_id
-          having editions > 5 and editions < 100''',[date[0],wiki_id])
-    row.append(len(c.fetchall()))
-    c.execute('''SELECT count(contributor_id) editions, contributor_id
-          from revisions
-          where month_group = ? and page_ns = 0 and wiki_id = ?
-          group by contributor_id
-          having editions < 5''',[date[0],wiki_id])
-    row.append(len(c.fetchall()))
-    result[date[0]] = row
-  conn.close()
-  return result
-
 

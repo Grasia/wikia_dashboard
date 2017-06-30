@@ -4,7 +4,7 @@
 from datetime import datetime as dt
 from datetime import date  as d
 import numpy as np
-import data_stadistics as dh
+import data_statistics as dh
 from bokeh.plotting import figure, output_file,show,gridplot,ColumnDataSource,curdoc
 from bokeh.models import LinearAxis, Range1d, HoverTool,CustomJS,Tabs,Panel,SingleIntervalTicker, LinearAxis
 import pandas as pd
@@ -20,6 +20,7 @@ from bokeh.palettes import Paired9,Reds5
 from numpy import pi
 import pickle
 import os.path
+import sys
 
 # For production code:
 # BOKEH_VALIDATE_DOC=false
@@ -208,6 +209,14 @@ def clear_callback():
   cbg_pages.active = []
   cbg_editions.active = []
   cbg_ratios.active = []
+
+
+# Main starts here #
+databases_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'databases')
+db_name = sys.argv[1] + ".sqlite"
+db_path = os.path.join(databases_dir, db_name)
+print(db_path)
+dh.init_statistics(db_path)
 
 wiki_id = 1
 curdoc().title = dh.get_name(wiki_id)
@@ -694,6 +703,7 @@ current_u_source = users_bar_data_frames[dates[-1]]
 users_bar = generate_users_bar(current_u_source)
 pages_bar = generate_pages_bar(current_u_source)
 
+dh.end_statistics()
 
 '''
 users_bar = figure(title = "Editions for users", y_range = edited_source.data['users'],name ="Editions for users",tools = tools, width = 1000,height = 400)
