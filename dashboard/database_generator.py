@@ -11,9 +11,10 @@ import os.path
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'databases')
 if (not os.path.isdir(BASE_DIR)):
   os.mkdir(BASE_DIR)
-  
+
 db_path = os.path.join(BASE_DIR, "wikis_db.sqlite")
 
+Debug = False
 
 PAGE_ID = 0
 PAGE_TITLE = 1
@@ -58,7 +59,8 @@ def load_data(data_file):
   c.execute("select distinct(page_id) from revisions where wiki_id = ?",[wiki_id])
   for page in c.fetchall():
     page = page[0]
-    print("Setting revision bytes for page " + str(page))
+    if Debug:
+      print("Setting revision bytes for page " + str(page))
     c.execute("select id,revision_id,page_size,revision_date from revisions where page_id = ? and wiki_id = ? order by revision_date asc",(page,wiki_id))
     revisions = c.fetchall()
     r_bytes = []
@@ -70,12 +72,12 @@ def load_data(data_file):
   print("Done!")
   return wiki_id
 
-  
+
 def grouping(data,size=1):
   for i in range(0,len(data)//size):
       yield sum([int(v) for v in data[i*size:(i+1)*size]])
-  
-  
+
+
 def isActive(max_date,*args : object):
   result = []
   for date in args:
@@ -89,7 +91,7 @@ def create_index_table():
   c = conn.cursor()
   c.execute('CREATE TABLE wikis(id INTEGER PRIMARY KEY AUTOINCREMENT, name)');
   conn.close();
-  
+
 
 def reset_db():
   conn = sqlite3.connect(db_path)
