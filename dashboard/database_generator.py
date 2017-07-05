@@ -3,18 +3,17 @@
 
 from datetime import datetime as dt
 from datetime import date as d
-import sys, getopt
+import argparse
 import csv
 import sqlite3
 import os.path
+import sys
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'databases')
 if (not os.path.isdir(BASE_DIR)):
   os.mkdir(BASE_DIR)
 
-db_path = os.path.join(BASE_DIR, "wikis_db.sqlite")
-
-Debug = False
+Debug = True
 
 PAGE_ID = 0
 PAGE_TITLE = 1
@@ -86,14 +85,15 @@ def isActive(max_date,*args : object):
   return result
 
 
-def create_index_table():
+def create_index_table(db_path):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
   c.execute('CREATE TABLE wikis(id INTEGER PRIMARY KEY AUTOINCREMENT, name)');
+  c.execute('CREATE TABLE revisions(id INTEGER PRIMARY KEY AUTOINCREMENT, wiki_id int, page_id int, page_title text, page_ns int, revision_id int, revision_date timestamp, contributor_id text, contributor_name text, page_size int, revision_bytes int, month_group timestamp, year_group timestamp, creation int)');
   conn.close();
 
 
-def reset_db():
+def reset_db(db_path):
   conn = sqlite3.connect(db_path)
   c = conn.cursor()
 
@@ -106,24 +106,37 @@ def reset_db():
   conn.close()
 
 
-def main(argv):
-  try:
-    opts, args = getopt.getopt(argv,"hi:o:l")
-  except getopt.GetoptError:
-    print('database_generator.py -l <inputfile>')
-    sys.exit(2)
-  for opt, arg in opts:
-    print(opt)
-    print(arg)
-    if opt == '-h':
-      print('database_generator.py -l <inputfile>')
-      sys.exit(0)
-    elif opt == "-l":
-      load_data(arg)
+args_parser = argparse.ArgumentParser(description="Generate a SQLite database from a csv file of wiki revisions")
+args_parser.add_argument("inputfile", nargs='?', help="The input csv file to get data from to insert into the database")
+args_parser.add_argument("-r", "--reset", action='store_true', help="Delete all current data stored in database. Optionally, creates new database if used along with <inputfile> data.")
+args_parser.add_argument("-db", "--database", default='wikis_db.sqlite', help="Set database to store data into or to reset. Default is 'wikis_db'")
+args = args_parser.parse_args()
+
+if len(sys.argv) < 2:
+  args_parser.print_help()
 
 
-if __name__ == "__main__":
-  if(sys.argv):
-    print("Loading file " + sys.argv[1])
-    reset_db()
-    load_data(sys.argv[1])
+#if args.database:
+  #db_name = args.database
+#else:
+  #db_name = "wikis_db.sqlite"
+
+db_name = args.database + '.sqlite'
+db_path = os.path.join(BASE_DIR, db_name)
+
+if not os.path.isfile(db_path):
+  create_index_table(db_path)
+
+if args.reset:
+  if os.path.isfile(db_path):
+    reset_db(db_path)
+    print('All data in %s has been deleted' % db_name)
+  else:
+    print('No database found to reset', file=sys.stderr)
+
+
+if args.inputfile:
+  if os.path.isfile(args.inputfile):
+    load_data(args.inputfile)
+  else:
+    print('Input file <' + args.inputfile + '> not found', file=sys.stderr)

@@ -28,7 +28,7 @@ def xml_to_csv(filename):
   _current_tag = ''
   page_id = page_title = page_ns = revision_id = timestamp = contributor_id = contributor_name = bytes_var = ''
   site_name = None
-  
+
   def start_tag(tag, attrs):
     nonlocal output_csv, _current_tag, _parent
     nonlocal bytes_var
@@ -42,7 +42,7 @@ def xml_to_csv(filename):
         bytes_var = '-1'
     elif tag == 'page' or tag == 'revision' or tag == 'contributor':
       _parent = tag
-    
+
     if tag == 'upload':
       print("!! Warning: '<upload>' element not being handled", file=sys.stderr)
 
@@ -95,20 +95,20 @@ def xml_to_csv(filename):
 
     # print revision to revision output csv
     if tag == 'revision':
-      
+
       revision_row = [page_id,page_title,page_ns,revision_id,timestamp,contributor_id,contributor_name,bytes_var]
-      
+
       # Do not print (skip) revisions that has any of the fields not available
       if not has_empty_field(revision_row):
         output_csv.write(";".join(revision_row) + '\n')
       else:
         print("The following line has imcomplete info and therefore it's been removed from the dataset:")
         print(revision_row)
-      
+
       # Debug lines to standard output
       if Debug:
         print(";".join(revision_row))
-      
+
       # Clearing data that has to be recalculated for every row:
       revision_id = timestamp = contributor_id = contributor_name = bytes_var = ''
 
@@ -150,4 +150,4 @@ if __name__ == "__main__":
     if xml_to_csv(sys.argv[1]):
       print("Data dump parsed succesfully")
   else:
-    print("Error: Invalid number of arguments. Please specify a .xml file to parse")
+    print("Error: Invalid number of arguments. Please specify a .xml file to parse", file=sys.stderr)
