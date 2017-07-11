@@ -23,6 +23,14 @@ def read_used_ports(ports_f):
   return [int(port) for port in ports]
 
 
+def launch_bokeh(nport, db_name):
+  port = '--port=' + str(nport)
+  args = '--args=' + db_name
+  cmd = ['bokeh', 'serve', '--show', 'dashboard', port, args]
+  #~ print(cmd)
+  return subprocess.run(cmd)
+
+
 def main():
     # Loading databases available in databases/
   databases_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dashboard/databases')
@@ -55,23 +63,22 @@ def main():
     nport = nport + 1
 
   #~ print (nport)
-
   ports_f = open('ports', mode='a')
   ports_f.write(str(nport) + '\n')
-
-  fcntl.flock(ports_f, fcntl.LOCK_UN)
   ports_f.close()
 
-  port = '--port=' + str(nport)
-  args = '--args=' + db_name
-  cmd = ['bokeh', 'serve', '--show', 'dashboard', port, args]
-  #~ print(cmd)
-  bokeh_prc = subprocess.run(cmd)
+  bokeh = launch_bokeh(nport, db_name)
 
-  if (bokeh_prc.returncode == 1):
-    ports_f = open('ports',mode='a')
+  # In case port is actually in use, we "cross" it and search again for another free port
+  while (bokeh.returncode == 1):
+    used_ports.append(nport)
+    while nport in used_ports:
+      nport = nport + 1
+    ports_f = open('ports', mode='a')
     ports_f.write(str(nport) + '\n')
     ports_f.close()
+    print('Restarting bokeh in another port')
+    bokeh = launch_bokeh(nport, db_name)
 
   return 0
 
