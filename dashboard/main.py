@@ -5,7 +5,7 @@ from datetime import datetime as dt
 from datetime import date  as d
 import numpy as np
 import data_statistics as dh
-from bokeh.plotting import figure, output_file,show,gridplot,ColumnDataSource,curdoc
+from bokeh.plotting import figure, output_file,show,ColumnDataSource,curdoc
 from bokeh.models import LinearAxis, Range1d, HoverTool,CustomJS,Tabs,Panel,SingleIntervalTicker, LinearAxis
 import pandas as pd
 import math
@@ -23,10 +23,19 @@ import os.path
 import sys
 
 # For production code:
-# BOKEH_VALIDATE_DOC=false
+#BOKEH_VALIDATE_DOC=False
+
+global time2, time1
+time1 = dt.now()
+
+def print_time(scope):
+  global time2, time1
+  time2 = dt.now()
+  print('Elapsed time for ' + scope + ' ~> ' + str(time2-time1))
+  time1 = time2
+
 
 import gc
-import marshal
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMG_PATH = os.path.join(BASE_DIR, "templates")
 WIDTH = 1300
@@ -218,25 +227,43 @@ db_path = os.path.join(databases_dir, db_name)
 print(db_path)
 dh.init_statistics(db_path)
 
+print_time('loading app')
+
 wiki_id = 1
 curdoc().title = dh.get_name(wiki_id)
 tools="hover,pan,reset,save,box_zoom,box_select,lasso_select"
 
 all_figures=[]
-if not os.path.isfile('wiki_status_source'):
+#if not os.path.isfile('wiki_status_source'):
+if True:
+  print_time('get_name')
+
   d = dh.wiki_status(wiki_id)
+  print_time('wiki_status')
+
   dsorted = sorted(d.items(),key = lambda x:x[0])
   darray = np.array(dsorted,dtype="object")
   dates = darray[:,0]
   editions_by_type = dh.get_editions_by_author_type(wiki_id)
+  print_time('get_editions_by_author_type')
+
   edited_pages = dh.edited_pages(wiki_id)
+  print_time('edited_pages')
+
   classified_active_users = dh.get_classified_users(wiki_id)
+  print_time('get_classified_users')
+
   classified_active_users = sorted(classified_active_users.items(),key = lambda x:x[0])
   classified_active_users =  np.array(classified_active_users,dtype="object")
   avg_page_size = dh.get_average_page_size(wiki_id)
+  print_time('classified_active_users')
+
   avg_page_size = sorted(avg_page_size.items(),key = lambda x:x[0])
   avg_page_size = np.array(avg_page_size,dtype="object")
   monthly_edition_bytes = dh.monthly_avg_bytes(wiki_id)
+
+  print_time('monthly_avg_bytes')
+
   pages = [element[0][0] for element in darray[:,1]]
   editions = [element[0][1] for element in darray[:,1]]
   users = [element[0][2]+element[0][3] for element in darray[:,1]]
@@ -265,6 +292,9 @@ if not os.path.isfile('wiki_status_source'):
   middle_active_users = [element[1][1]+element[1][0] for element in classified_active_users]
   avg_size = avg_page_size[:,1]
   monthly_edition_bytes = [element[1] for element in monthly_edition_bytes]
+
+  print_time('generate Python lists of data')
+
   data = dict(
     pages = pages,
     editions = editions,
@@ -297,9 +327,11 @@ if not os.path.isfile('wiki_status_source'):
     monthly_edition_bytes = monthly_edition_bytes
   )
   wiki_status_source = ColumnDataSource(data=data)
-  output = open(os.path.join(BASE_DIR,'wiki_status_source'),'wb')
-  pickle.dump(data,output,protocol = 4)
-  output.close()
+  #~ output = open(os.path.join(BASE_DIR,'wiki_status_source'),'wb')
+  #~ pickle.dump(data,output,protocol = 4)
+  #~ output.close()
+  #~ print_time('write wiki_status output file')
+
 else:
   inp = open(os.path.join(BASE_DIR,'wiki_status_source'),'rb')
   gc.disable()
@@ -370,13 +402,14 @@ wiki_status_source = ColumnDataSource(
     monthly_edition_bytes = monthly_edition_bytes
 ))
 
-if not os.path.isfile('top_users'):
+#if not os.path.isfile('top_users'):
+if True:
   top_users = dh.top_users(wiki_id)
   sorted_top_users = sorted(top_users.items(),key = lambda x:x[0])
   array_top_users = np.array(sorted_top_users,dtype="object")
-  output = open(os.path.join(BASE_DIR,'array_top_users'),'wb')
-  pickle.dump(array_top_users,output,protocol = 4)
-  output.close()
+  #output = open(os.path.join(BASE_DIR,'array_top_users'),'wb')
+  #pickle.dump(array_top_users,output,protocol = 4)
+  #output.close()
   top_users_table_ds=dict()
   top_users_data=dict()
   for top_row in array_top_users:
@@ -388,9 +421,9 @@ if not os.path.isfile('top_users'):
           top_users_table_ds[top_row[0]] = ColumnDataSource(data = data)
           top_users_data[top_row[0]] = data
           size = len(sorted_users)
-  output = open(os.path.join(BASE_DIR,'top_users'),'wb')
-  pickle.dump(top_users_data,output,protocol = 4)
-  output.close()
+  #output = open(os.path.join(BASE_DIR,'top_users'),'wb')
+  #pickle.dump(top_users_data,output,protocol = 4)
+  #output.close()
 else:
   inp = open(os.path.join(BASE_DIR,'top_users'),'rb')
   gc.disable()
@@ -404,6 +437,9 @@ else:
   array_top_users = np.array(array_top_users,dtype="object")
   gc.enable()
   inp.close()
+
+
+print_time('top_users')
 
 pages_figure = figure(title = "Total pages",name ="Total pages",y_axis_label = "Pages",height = HEIGHT, width = WIDTH,x_axis_type = "datetime",tools = tools)
 pages_figure.line('dates','pages',source=wiki_status_source,line_width=2.5,color =Paired9[3])
@@ -577,6 +613,8 @@ hover.tooltips = [
 ('Monthly average edition bytes','@monthly_edition_bytes')
 ]
 
+print_time('Created bokeh figures')
+
 all_figures.append(pages_figure)
 all_figures.append(pages_month_figure)
 all_figures.append(pages_per_user_figure)
@@ -628,6 +666,8 @@ cbg_labels = [  "Total",
                 "Edition average (total)",
                 "Edition average (monthly)"]
 
+print_time('Appended bokeh figures')
+
 pages_div = Div(text = '<h1 id="pages_title"> Pages <h1>', css_classes=['pages_div','panel_div'])
 editions_div = Div(text = '<h1 id="editions_title"> Editions <h1>', css_classes=['editions_div','panel_div'])
 users_div = Div(text = '<h1 id="users_title"> Users <h1>', css_classes=['users_div','panel_div'])
@@ -648,7 +688,7 @@ sizing_mode = "fixed"
 time_slider = Slider(start=1, end= len(dates), value= len(dates), step = 1, title = "Months from creation",width=1580)
 date_div = Div(text = '<h1 style="text-align:center"> Stats until:'+time[-1]+'<h1>',width=1600)
 banners_div = Div(text = banners_html(len(dates)-1),width=1600)
-time_slider.on_change('value',slider_callback)
+#time_slider.on_change('value',slider_callback)
 
 
 top_users_columns = [
@@ -705,6 +745,8 @@ pages_bar = generate_pages_bar(current_u_source)
 
 dh.end_statistics()
 
+print_time('Generated bokeh figures')
+
 '''
 users_bar = figure(title = "Editions for users", y_range = edited_source.data['users'],name ="Editions for users",tools = tools, width = 1000,height = 400)
 users_bar.hbar(y = 'users',height = 0.3,right='editions',stacked='edited',source = edited_source)
@@ -739,3 +781,5 @@ other_layout = Column(  widgetbox(date_div),
                         sizing_mode = sizing_mode)
 other_tab = Panel(child = other_layout, title = "Statistics")
 curdoc().add_root(Tabs(tabs=[main_tab,other_tab]))
+
+print_time('End. Launching app...')

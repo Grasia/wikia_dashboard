@@ -67,7 +67,10 @@ def main():
   ports_f.write(str(nport) + '\n')
   ports_f.close()
 
-  bokeh = launch_bokeh(nport, db_name)
+  try:
+    bokeh = launch_bokeh(nport, db_name)
+  except KeyboardInterrupt:
+    print('Keyboard interruption!')
 
   # In case port is actually in use, we "cross" it and search again for another free port
   while (bokeh.returncode == 1):
@@ -80,6 +83,7 @@ def main():
     print('Restarting bokeh in another port')
     bokeh = launch_bokeh(nport, db_name)
 
+  print('Launcher shutting down...')
   return 0
 
 if __name__ == '__main__':
