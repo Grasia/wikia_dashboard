@@ -109,7 +109,7 @@ def reset_db(db_path):
 args_parser = argparse.ArgumentParser(description="Generate a SQLite database from a csv file of wiki revisions")
 args_parser.add_argument("inputfile", nargs='?', help="The input csv file to get data from to insert into the database")
 args_parser.add_argument("-r", "--reset", action='store_true', help="Delete all current data stored in database. Optionally, creates new database if used along with <inputfile> data.")
-args_parser.add_argument("-db", "--database", default='wikis_db.sqlite', help="Set database to store data into or to reset. Default is 'wikis_db'")
+args_parser.add_argument("-db", "--database", default='wikis_db', help="Set database to store data into or to reset. Default is 'wikis_db'")
 args = args_parser.parse_args()
 
 if len(sys.argv) < 2:
