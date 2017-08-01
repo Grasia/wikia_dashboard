@@ -2,3 +2,5 @@ dashboard/databases/
 dashboard/data/
 dashboard/__pycache__/
 **/wikis_db.sqlite
+ports
+__pycache__/
