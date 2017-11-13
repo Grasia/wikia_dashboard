@@ -26,7 +26,7 @@ def read_used_ports(ports_f):
 def launch_bokeh(nport, db_name):
   port = '--port=' + str(nport)
   args = '--args=' + db_name
-  cmd = ['bokeh', 'serve', '--show', 'dashboard', port, args]
+  cmd = ['bokeh', 'serve', '--show', '--allow-websocket-origin=*', 'dashboard', port, args]
   #~ print(cmd)
   return subprocess.run(cmd)
 
