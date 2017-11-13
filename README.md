@@ -88,3 +88,10 @@ Where file.txt is the output file from the previous step. Now everything is read
 This will open a web browser with the application. The result should be similar to this:
 
 ![alt text](https://github.com/Grasia/wikia_dashboard/blob/master/sample_snapshot.PNG)
+
+# Run the webapp
+Alternatively to directly use `bokeh`, you can use the launch.py script. It makes it easy and handy to run the webapp successively, specially if you're working with different datasets.
+
+Just go to the root of the project and run `python3 launch.py <databasename>`. The script will search for an available port and will start bokeh listening on that port, as well as it will open a browser tab with the corresponding address.
+
+If you want to know which databases are available to be launched, simply run `python3 launch.py`.
